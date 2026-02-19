@@ -14,12 +14,45 @@ if [[ "${EUID}" -ne 0 ]]; then
   exit 1
 fi
 
+ensure_build_tools() {
+  if command -v cc >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "C compiler (cc) not found. Installing build tools..."
+
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential pkg-config
+    return 0
+  fi
+
+  if command -v dnf >/dev/null 2>&1; then
+    dnf install -y gcc gcc-c++ make pkgconf-pkg-config
+    return 0
+  fi
+
+  if command -v yum >/dev/null 2>&1; then
+    yum install -y gcc gcc-c++ make pkgconfig
+    return 0
+  fi
+
+  if command -v pacman >/dev/null 2>&1; then
+    pacman -Sy --noconfirm base-devel pkgconf
+    return 0
+  fi
+
+  echo "Unsupported package manager. Install a C toolchain manually (cc/gcc/clang + make + pkg-config)."
+  exit 1
+}
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 
 cd "${ROOT_DIR}"
 
 echo "[1/7] Building release binary..."
+ensure_build_tools
 if command -v cargo >/dev/null 2>&1; then
   cargo build --release
 elif [[ -n "${SUDO_USER:-}" ]]; then
