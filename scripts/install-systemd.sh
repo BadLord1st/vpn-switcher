@@ -20,7 +20,22 @@ ROOT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 cd "${ROOT_DIR}"
 
 echo "[1/7] Building release binary..."
-cargo build --release
+if command -v cargo >/dev/null 2>&1; then
+  cargo build --release
+elif [[ -n "${SUDO_USER:-}" ]]; then
+  USER_HOME="$(getent passwd "${SUDO_USER}" | cut -d: -f6)"
+  USER_CARGO="${USER_HOME}/.cargo/bin/cargo"
+  if [[ -x "${USER_CARGO}" ]]; then
+    echo "cargo not found for root, using ${USER_CARGO}..."
+    su - "${SUDO_USER}" -c "cd '${ROOT_DIR}' && '${USER_CARGO}' build --release"
+  else
+    echo "cargo not found for root, building as ${SUDO_USER}..."
+    su - "${SUDO_USER}" -c "cd '${ROOT_DIR}' && cargo build --release"
+  fi
+else
+  echo "cargo not found in PATH. Install Rust/Cargo or run with: sudo -E ./scripts/install-systemd.sh"
+  exit 1
+fi
 
 echo "[2/7] Installing binary to ${INSTALL_BIN}..."
 install -m 0755 "${ROOT_DIR}/target/release/${BIN_NAME}" "${INSTALL_BIN}"
