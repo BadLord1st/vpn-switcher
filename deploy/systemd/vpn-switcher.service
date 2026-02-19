@@ -1,0 +1,22 @@
+[Unit]
+Description=VPN Switcher microservice (Outline)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+EnvironmentFile=/etc/vpn-switcher/vpn-switcher.env
+ExecStart=/usr/local/bin/vpn-switcher
+Restart=always
+RestartSec=2s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/vpn-switcher /etc/vpn-switcher
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target
