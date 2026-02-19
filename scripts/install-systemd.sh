@@ -46,6 +46,45 @@ ensure_build_tools() {
   exit 1
 }
 
+ensure_rust_toolchain() {
+  local target_user
+  local target_home
+  local target_cargo
+
+  target_user="${SUDO_USER:-root}"
+  target_home="$(getent passwd "${target_user}" | cut -d: -f6)"
+  target_cargo="${target_home}/.cargo/bin/cargo"
+
+  if [[ -x "${target_cargo}" ]]; then
+    return 0
+  fi
+
+  echo "Rust/Cargo not found for ${target_user}. Installing rustup + stable toolchain..."
+
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y curl ca-certificates
+  elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y curl ca-certificates
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y curl ca-certificates
+  elif command -v pacman >/dev/null 2>&1; then
+    pacman -Sy --noconfirm curl ca-certificates
+  fi
+
+  if [[ "${target_user}" == "root" ]]; then
+    curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal
+    "${target_cargo}" --version >/dev/null
+    return 0
+  fi
+
+  su - "${target_user}" -c "curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal"
+  if [[ ! -x "${target_cargo}" ]]; then
+    echo "Failed to install cargo for ${target_user}."
+    exit 1
+  fi
+}
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 
@@ -53,6 +92,7 @@ cd "${ROOT_DIR}"
 
 echo "[1/7] Building release binary..."
 ensure_build_tools
+ensure_rust_toolchain
 if command -v cargo >/dev/null 2>&1; then
   cargo build --release
 elif [[ -n "${SUDO_USER:-}" ]]; then
