@@ -48,7 +48,7 @@ cargo run
 Установка:
 
 ```bash
-cd /Users/badwolf/projects/vpn-switcher
+cd vpn-switcher
 sudo ./scripts/install-systemd.sh
 ```
 
